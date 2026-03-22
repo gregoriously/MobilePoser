@@ -111,7 +111,7 @@ Omit the `--finetune` argument if you did not finetune. The resulting weight fil
 
 ### Download pre-trained network weights
 We provide a pre-trained model for the set of configurations listed in `config.py`. 
-1. Download weights from [here](https://uchicago.box.com/s/ey3y49srpo79propzvmjx0t8u3ael6cl). 
+1. Download weights from [here](https://uchicago.box.com/s/05bany9ubfcl06pfwyy9lm2tk9fa9iqx). 
 2. In `config.py`, set the `paths.weights_file` to the model path.
 
 ### Run Evaluation
