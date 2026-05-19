@@ -117,7 +117,8 @@ tensorboard==2.15.1
 tensorboard-data-server==0.7.2
 termcolor==2.4.0
 threadpoolctl==3.2.0
-torch==2.1.2
+# torch==2.1.2
+# torch is provided by the base image (pytorch/pytorch:2.0.1-cuda11.7-cudnn8-runtime)
 torchmetrics==1.2.1
 tqdm==4.64.0
 traitlets==5.14.0
