@@ -27,7 +27,7 @@ class paths:
     """Relevant paths for MobilePoser. Change as necessary."""
     root_dir = Path().absolute()
     checkpoint = root_dir / "checkpoints"
-    smpl_file = root_dir / "smpl/basicmodel_m.pkl"
+    smpl_file = root_dir / "mobileposer/smpl/basicmodel_m.pkl"
     weights_file = root_dir / "checkpoints/weights.pth"
     raw_amass = Path("/data/raw/AMASS")           # TODO: replace with your path
     raw_dip = Path("/data/raw/DIP_IMU")           # TODO: replace with your path
