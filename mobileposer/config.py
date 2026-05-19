@@ -29,11 +29,11 @@ class paths:
     checkpoint = root_dir / "checkpoints"
     smpl_file = root_dir / "smpl/basicmodel_m.pkl"
     weights_file = root_dir / "checkpoints/weights.pth"
-    raw_amass = Path("/data/projects/Pose/raw/AMASS")           # TODO: replace with your path
-    raw_dip = Path("/data/projects/Pose/raw/DIP_IMU")           # TODO: replace with your path
-    raw_imuposer = Path("/data/projects/Pose/raw/IMUPoser")     # TODO: replace with your path
-    eval_dir = root_dir / "data/processed_datasets/eval"
-    processed_datasets = root_dir / "data/processed_datasets"
+    raw_amass = Path("/data/raw/AMASS")           # TODO: replace with your path
+    raw_dip = Path("/data//raw/DIP_IMU")           # TODO: replace with your path
+    raw_imuposer = Path("/data/raw/IMUPoser")     # TODO: replace with your path
+    eval_dir = root_dir / "data/mobileposer_processed_datasets/eval"
+    processed_datasets = root_dir / "data/mobileposer_processed_datasets"
     raw_totalcapture_official = root_dir / "data/raw/TotalCapture/raw"  # TODO: replace with your path
     calibrated_totalcapture = root_dir / "data/raw/TotalCapture/IMU"  # TODO: replace with your path
 
