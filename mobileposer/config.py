@@ -30,7 +30,7 @@ class paths:
     smpl_file = root_dir / "smpl/basicmodel_m.pkl"
     weights_file = root_dir / "checkpoints/weights.pth"
     raw_amass = Path("/data/raw/AMASS")           # TODO: replace with your path
-    raw_dip = Path("/data//raw/DIP_IMU")           # TODO: replace with your path
+    raw_dip = Path("/data/raw/DIP_IMU")           # TODO: replace with your path
     raw_imuposer = Path("/data/raw/IMUPoser")     # TODO: replace with your path
     eval_dir = root_dir / "data/mobileposer_processed_datasets/eval"
     processed_datasets = root_dir / "data/mobileposer_processed_datasets"
