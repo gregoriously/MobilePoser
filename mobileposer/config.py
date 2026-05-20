@@ -25,7 +25,7 @@ class finetune_hypers:
 
 class paths:
     """Relevant paths for MobilePoser. Change as necessary."""
-    root_dir = Path().absolute()
+    root_dir = Path(__file__).parent.parent
     checkpoint = root_dir / "checkpoints"
     smpl_file = root_dir / "mobileposer/smpl/basicmodel_m.pkl"
     weights_file = root_dir / "checkpoints/weights.pth"
