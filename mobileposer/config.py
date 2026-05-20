@@ -63,10 +63,10 @@ class footcontact_hypers:
 
 class wandb_config:
     """Weights & Biases logging configuration."""
-    project = "mobileposer"             # TODO: replace with your project name
+    project = "mobileposer-grk-experiments"             # TODO: replace with your project name
     entity = None                       # TODO: replace with your wandb entity (user/team), or leave None for default
     log_model = "all"                   # "all" logs every checkpoint, True logs best only, False disables artifact logging
-    use_artifacts = False               # if True, combine/eval pull inputs from wandb artifacts (lineage); else read local disk
+    use_artifacts = True               # if True, combine/eval pull inputs from wandb artifacts (lineage); else read local disk
 
 
 class paths:
