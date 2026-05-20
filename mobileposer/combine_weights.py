@@ -50,7 +50,8 @@ if __name__ == "__main__":
             print(f"No checkpoint found for {module_name} in {module_path}")
 
     # load combined model and save
-    model_name = "base_model.pth" if not args.finetune else "model_finetuned.pth"
+    #model_name = "base_model.pth" if not args.finetune else "model_finetuned.pth"
+    model_name = "base_model.pth" if not args.finetune else f"model_finetuned_{args.finetune}.pth"
     model = MobilePoserNet(**checkpoints)
     model_path = Path("checkpoints") / str(args.checkpoint) / model_name
     torch.save(model.state_dict(), model_path)
