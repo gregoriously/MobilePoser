@@ -8,6 +8,7 @@ import numpy as np
 from mobileposer.config import *
 import mobileposer.articulate as art
 from mobileposer.models.rnn import RNN
+from mobileposer.utils.model_utils import get_optimizer
 
 
 class FootContact(L.LightningModule):
@@ -29,6 +30,8 @@ class FootContact(L.LightningModule):
 
         # loss function (binary cross-entropy)
         self.loss = nn.BCEWithLogitsLoss()
+        self.noise_sigma = footcontact_hypers.noise_sigma
+        self.optimizer = footcontact_hypers.optimizer
 
         # track stats
         self.validation_step_loss = []
@@ -54,7 +57,7 @@ class FootContact(L.LightningModule):
         foot_contacts = outputs['foot_contacts']
 
         # add noise to target joints for beter robustness
-        noise = torch.randn(target_joints.size()).to(self.C.device) * 0.04 # gaussian noise with std = 0.04
+        noise = torch.randn(target_joints.size()).to(self.C.device) * self.noise_sigma
         target_joints += noise
         
         # predict foot-ground contact probability
@@ -97,4 +100,4 @@ class FootContact(L.LightningModule):
         self.log(f"{loop_type}_loss", average_loss, prog_bar=True, batch_size=self.hypers.batch_size)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.hypers.lr) 
+        return get_optimizer(self.optimizer, self.parameters(), self.hypers.lr)

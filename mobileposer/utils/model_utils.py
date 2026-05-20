@@ -15,6 +15,15 @@ def load_model(model_path: str):
     return model
 
 
+def get_optimizer(name: str, params, lr: float):
+    """Construct an optimizer by name (single source of truth for module configs)."""
+    optimizers = {"adam": torch.optim.Adam, "adamw": torch.optim.AdamW}
+    key = name.lower()
+    if key not in optimizers:
+        raise ValueError(f"Unknown optimizer '{name}'. Options: {list(optimizers)}")
+    return optimizers[key](params, lr=lr)
+
+
 def reduced_pose_to_full(reduced_pose):
     """Transform reduced pose to full pose."""
     B, S = reduced_pose.shape[0], reduced_pose.shape[1]

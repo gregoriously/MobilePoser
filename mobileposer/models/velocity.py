@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 from mobileposer.articulate.model import ParametricModel
 from mobileposer.models.rnn import RNN
 from mobileposer.config import *
+from mobileposer.utils.model_utils import get_optimizer
 
 
 class Velocity(L.LightningModule):
@@ -29,8 +30,10 @@ class Velocity(L.LightningModule):
         self.vel = RNN(self.C.n_output_joints * 3 + self.C.n_imu, 24 * 3, 256, bidirectional=False)  # per-frame velocity of the root joint. 
         self.rnn_state = None
 
-        # loss function 
+        # loss function
         self.loss = nn.MSELoss()
+        self.noise_sigma = velocity_hypers.noise_sigma
+        self.optimizer = velocity_hypers.optimizer
 
         # track stats
         self.validation_step_loss = []
@@ -61,7 +64,7 @@ class Velocity(L.LightningModule):
         target_vel = outputs['vels'].view(joints.shape[0], joints.shape[1], 72)
 
         # add noise to target joints for beter robustness
-        noise = torch.randn(target_joints.size()).to(self.C.device) * 0.025 # gaussian noise with std = 0.025
+        noise = torch.randn(target_joints.size()).to(self.C.device) * self.noise_sigma
         target_joints += noise
         
         # predict root joint velocity
@@ -118,4 +121,4 @@ class Velocity(L.LightningModule):
         self.log(f"{loop_type}_loss", average_loss, prog_bar=True, batch_size=self.hypers.batch_size)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.hypers.lr) 
+        return get_optimizer(self.optimizer, self.parameters(), self.hypers.lr)

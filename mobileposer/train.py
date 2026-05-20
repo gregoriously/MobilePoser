@@ -23,7 +23,24 @@ from mobileposer.utils.file_utils import (
     get_dir_number, 
     get_best_checkpoint
 )
-from mobileposer.config import paths, train_hypers, finetune_hypers
+from mobileposer.config import (
+    paths, train_hypers, finetune_hypers, wandb_config,
+    poser_hypers, joints_hypers, velocity_hypers, footcontact_hypers
+)
+
+
+# per-module hyperparameter configs, for logging the divergent knobs to wandb
+MODULE_HYPERS = {
+    "poser": poser_hypers,
+    "joints": joints_hypers,
+    "velocity": velocity_hypers,
+    "foot_contact": footcontact_hypers,
+}
+
+
+def _hyper_dict(cls):
+    """Public (non-dunder) attributes of a hypers class as a plain dict."""
+    return {k: getattr(cls, k) for k in vars(cls) if not k.startswith("__")}
 
 
 # set precision for Tensor cores
@@ -36,13 +53,41 @@ class TrainingManager:
         self.finetune = finetune
         self.fast_dev_run = fast_dev_run
         self.hypers = finetune_hypers if finetune else train_hypers
+        self.job_type = f"finetune_{finetune}" if finetune else "train"
 
-    def _setup_wandb_logger(self, save_path: Path):
+    def _experiment_group(self, checkpoint_path: Path) -> str:
+        """Experiment id shared by all modules of one pipeline run (e.g. 'exp-3')."""
+        # base training: checkpoints/<N>; finetuning: checkpoints/<N>/finetuned_<dataset>
+        exp_dir = checkpoint_path.parent.parent if self.finetune else checkpoint_path
+        return f"exp-{exp_dir.name}"
+
+    def _setup_wandb_logger(self, module_path: Path, module_name: str):
+        group = self._experiment_group(module_path.parent)
         wandb_logger = WandbLogger(
-            project=save_path.name, 
-            name=get_datestring(),
-            save_dir=save_path
-        ) 
+            project=wandb_config.project,
+            entity=wandb_config.entity,
+            name=f"{module_name}-{self.job_type}",
+            group=group,
+            job_type=self.job_type,
+            tags=[module_name, self.job_type],
+            save_dir=module_path,
+            log_model=wandb_config.log_model,
+            checkpoint_name=f"model-{module_name}-{self.job_type}",
+        )
+        # record hyperparameters and run context in the wandb config.
+        # this captures the knobs that diverge from the paper so changes are tracked per run.
+        config = {
+            "module": module_name,
+            "finetune": self.finetune,
+            "batch_size": self.hypers.batch_size,
+            "num_epochs": self.hypers.num_epochs,
+            "lr": self.hypers.lr,
+            "grad_clip_val": self.hypers.grad_clip_val,
+            "early_stopping": self.hypers.early_stopping,
+        }
+        if module_name in MODULE_HYPERS:
+            config.update({f"module/{k}": v for k, v in _hyper_dict(MODULE_HYPERS[module_name]).items()})
+        wandb_logger.experiment.config.update(config, allow_val_change=True)
         return wandb_logger
 
     def _setup_callbacks(self, save_path):
@@ -51,24 +96,37 @@ class TrainingManager:
                 save_top_k=3,
                 mode="min",
                 verbose=False,
-                dirpath=save_path, 
+                dirpath=save_path,
                 save_weights_only=True,
                 filename="{epoch}-{validation_step_loss:.4f}"
                 )
-        return checkpoint_callback
+        callbacks = [checkpoint_callback]
+        if self.hypers.early_stopping:
+            # NOTE: this is currently a no-op. The trainer below sets
+            # min_epochs == max_epochs == num_epochs, so Lightning always runs the
+            # full epoch count and EarlyStopping can never trigger early. The paper
+            # specifies a fixed 80 epochs (no early stopping), so this is intentional;
+            # to actually use early stopping, lower min_epochs in the hypers/trainer.
+            callbacks.append(EarlyStopping(
+                monitor="validation_step_loss",
+                mode="min",
+                patience=self.hypers.early_stopping_patience,
+            ))
+        return callbacks
 
-    def _setup_trainer(self, module_path: Path):
+    def _setup_trainer(self, module_path: Path, module_name: str):
         print("Module Path: ", module_path.name, module_path)
-        logger = self._setup_wandb_logger(module_path) 
-        checkpoint_callback = self._setup_callbacks(module_path)
+        logger = self._setup_wandb_logger(module_path, module_name)
+        callbacks = self._setup_callbacks(module_path)
         trainer = L.Trainer(
                 fast_dev_run=self.fast_dev_run,
                 min_epochs=self.hypers.num_epochs,
                 max_epochs=self.hypers.num_epochs,
-                devices=[self.hypers.device], 
+                devices=[self.hypers.device],
                 accelerator=self.hypers.accelerator,
+                gradient_clip_val=self.hypers.grad_clip_val,
                 logger=logger,
-                callbacks=[checkpoint_callback],
+                callbacks=callbacks,
                 deterministic=True
                 )
         return trainer
@@ -81,7 +139,7 @@ class TrainingManager:
         module_path = checkpoint_path / module_name
         make_dir(module_path)
         datamodule = PoseDataModule(finetune=self.finetune)
-        trainer = self._setup_trainer(module_path)
+        trainer = self._setup_trainer(module_path, module_name)
 
         print()
         print("-" * 50)

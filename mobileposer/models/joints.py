@@ -8,6 +8,7 @@ import numpy as np
 from mobileposer.config import *
 import mobileposer.articulate as art
 from mobileposer.models.rnn import RNN
+from mobileposer.utils.model_utils import get_optimizer
 
 
 class Joints(L.LightningModule):
@@ -28,9 +29,11 @@ class Joints(L.LightningModule):
         self.bodymodel = art.model.ParametricModel(paths.smpl_file, device=self.C.device)
         self.joints = RNN(self.C.n_imu, 24 * 3, 256) # joint estimation model 
 
-        # loss function 
+        # loss function
         self.loss = nn.MSELoss()
-        self.t_weight = 1e-5
+        self.t_weight = joints_hypers.temporal_loss_weight
+        self.use_temporal_loss = joints_hypers.use_temporal_loss
+        self.optimizer = joints_hypers.optimizer
 
         # track stats
         self.validation_step_loss = []
@@ -66,7 +69,8 @@ class Joints(L.LightningModule):
 
         # compute loss
         loss = self.loss(pred_joints, target_joints)
-        loss += self.t_weight*self.compute_temporal_loss(pred_joints)
+        if self.use_temporal_loss:
+            loss += self.t_weight*self.compute_temporal_loss(pred_joints)
         return loss
 
     def compute_temporal_loss(self, pred_pose):
@@ -111,4 +115,4 @@ class Joints(L.LightningModule):
         self.log("learning_rate", lr, prog_bar=True)
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.hypers.lr)
+        return get_optimizer(self.optimizer, self.parameters(), self.hypers.lr)

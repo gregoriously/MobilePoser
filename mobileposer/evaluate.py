@@ -2,15 +2,24 @@ import os
 import numpy as np
 import torch
 from argparse import ArgumentParser
-import tqdm 
+from pathlib import Path
+import tqdm
+import wandb
 
 from mobileposer.config import *
-from mobileposer.helpers import * 
+from mobileposer.helpers import *
 import mobileposer.articulate as art
 from mobileposer.constants import MODULES
 from mobileposer.utils.model_utils import load_model
+from mobileposer.utils.file_utils import link_and_verify_artifact
 from mobileposer.data import PoseDataset
 from mobileposer.models import MobilePoserNet
+
+
+# names of the metrics returned (in order) by PoseEvaluator.eval
+METRIC_NAMES = ['SIP Error (deg)', 'Angular Error (deg)', 'Masked Angular Error (deg)',
+                'Positional Error (cm)', 'Masked Positional Error (cm)', 'Mesh Error (cm)',
+                'Jitter Error (100m/s^3)', 'Distance Error (cm)']
 
 
 class PoseEvaluator:
@@ -96,15 +105,30 @@ def evaluate_pose(model, dataset, num_past_frame=20, num_future_frame=5, evaluat
                 online_errs.append(evaluator.eval(pose_p_online, pose_t, tran_p=tran_p_online, tran_t=tran_t))
 
     # print joint errors
+    offline_mean = torch.stack(offline_errs).mean(dim=0)
     print('============== offline ================')
-    evaluator.print(torch.stack(offline_errs).mean(dim=0))
+    evaluator.print(offline_mean)
+    online_mean = None
     if getenv("ONLINE"):
+        online_mean = torch.stack(online_errs).mean(dim=0)
         print('============== online ================')
-        evaluator.print(torch.stack(online_errs).mean(dim=0))
-    
+        evaluator.print(online_mean)
+
     # print translation errors
     if evaluate_tran:
         print([0] + [torch.tensor(_).mean() for _ in tran_errors.values()])
+
+    return offline_mean, online_mean
+
+
+def log_errors(run, errors, dataset, mode):
+    """Log a mean(+/- std) error table to wandb as summary metrics and a table."""
+    table = wandb.Table(columns=["metric", "mean", "std"])
+    for i, name in enumerate(METRIC_NAMES):
+        mean, std = errors[i, 0].item(), errors[i, 1].item()
+        run.summary[f"{dataset}/{mode}/{name}"] = mean
+        table.add_data(name, mean, std)
+    run.log({f"{dataset}/{mode}/errors": table})
 
 
 if __name__ == '__main__':
@@ -113,7 +137,25 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='dip')
     args = parser.parse_args()
 
-    # load model 
+    # start a wandb run for evaluation
+    run = wandb.init(
+        project=wandb_config.project,
+        entity=wandb_config.entity,
+        job_type="eval",
+        name=f"eval-{Path(args.model).stem}-{args.dataset}",
+        tags=["eval", args.dataset],
+        config={"model": args.model, "dataset": args.dataset,
+                "online": bool(getenv("ONLINE")), "physics": bool(getenv("PHYSICS"))},
+    )
+
+    # establish lineage from the combined-model artifact, if enabled.
+    # verifies the artifact is byte-identical to the local model file we load
+    # below; raises if they differ. (combine logs the .pth without a 'best' alias.)
+    if wandb_config.use_artifacts:
+        link_and_verify_artifact(run, Path(args.model).stem, args.model,
+                                 aliases=("latest",), file_glob="*.pth")
+
+    # load model
     model = load_model(args.model)
 
     # load dataset
@@ -123,4 +165,11 @@ if __name__ == '__main__':
 
     # evaluate pose
     print(f"Starting evaluation: {args.dataset.capitalize()}")
-    evaluate_pose(model, dataset)
+    offline_mean, online_mean = evaluate_pose(model, dataset)
+
+    # log metrics to wandb
+    log_errors(run, offline_mean, args.dataset, "offline")
+    if online_mean is not None:
+        log_errors(run, online_mean, args.dataset, "online")
+
+    wandb.finish()

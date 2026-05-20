@@ -6,7 +6,7 @@ from torch.nn import functional as F
 import numpy as np
 
 from mobileposer.config import *
-from mobileposer.utils.model_utils import reduced_pose_to_full
+from mobileposer.utils.model_utils import reduced_pose_to_full, get_optimizer
 import mobileposer.articulate as art
 from mobileposer.models.rnn import RNN
 
@@ -33,7 +33,10 @@ class Poser(L.LightningModule):
 
         # loss function
         self.loss = nn.MSELoss()
-        self.t_weight = 1e-5 
+        self.t_weight = poser_hypers.jerk_loss_weight
+        self.use_jerk_loss = poser_hypers.use_jerk_loss
+        self.noise_sigma = poser_hypers.noise_sigma
+        self.optimizer = poser_hypers.optimizer
         self.use_pos_loss = True
 
         # track stats
@@ -77,7 +80,7 @@ class Poser(L.LightningModule):
         target_joints = joints.view(B, S, -1)
 
         # generate noise for target joints for beter robustness
-        noise = torch.randn(target_joints.size()).to(self.C.device) * 0.04 # gaussian noise with std = 0.04
+        noise = torch.randn(target_joints.size()).to(self.C.device) * self.noise_sigma
         noisy_joints = target_joints + noise
 
         # predict pose
@@ -87,7 +90,8 @@ class Poser(L.LightningModule):
         # compute pose loss
         pose_t = target_pose.view(B, S, 24, 6)[:, :, joint_set.reduced].view(B, S, -1)
         loss = self.loss(pose_p, pose_t)
-        loss += self.t_weight*self.compute_jerk_loss(pose_p)
+        if self.use_jerk_loss:
+            loss += self.t_weight*self.compute_jerk_loss(pose_p)
 
         # joint position loss
         if self.use_pos_loss:
@@ -144,5 +148,4 @@ class Poser(L.LightningModule):
         self.log("learning_rate", lr, prog_bar=True)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.hypers.lr) 
-        return optimizer
+        return get_optimizer(self.optimizer, self.parameters(), self.hypers.lr)

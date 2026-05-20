@@ -7,20 +7,66 @@ class train_hypers:
     """Hyperparameters for training."""
     batch_size = 256
     num_workers = 8
-    num_epochs = 60
+    num_epochs = 60                 # DEVIATION: paper specifies 80 epochs
     accelerator = "gpu"
     device = 0
     lr = 1e-3
+    grad_clip_val = None            # DEVIATION: paper specifies gradient norm clipping = 1.0; repo has none (None disables)
+    early_stopping = False          # DEVIATION: EarlyStopping callback imported in train.py but never used
+    early_stopping_patience = 10
 
 
 class finetune_hypers:
-    """Hyperparamters for finetuning."""
-    batch_size = 32
+    """Hyperparamters for finetuning. NOTE: these finetune values are not disclosed in the paper."""
+    batch_size = 32                 # UNDISCLOSED: down from 256 (train_hypers)
     num_workers = 8
-    num_epochs = 15
+    num_epochs = 15                 # UNDISCLOSED: down from 60 (train_hypers)
     accelerator = "gpu"
     device = 0
-    lr = 5e-5
+    lr = 5e-5                       # UNDISCLOSED: down from 1e-3 (train_hypers)
+    grad_clip_val = None            # DEVIATION: same as training - paper specifies clipping = 1.0
+    early_stopping = False          # DEVIATION: same as training - unused
+    early_stopping_patience = 10
+
+
+# ---------------------------------------------------------------------------
+# Per-module hyperparameters. Single editable source of truth for the knobs
+# that diverge from the MobilePoser paper. Defaults equal the current repo
+# behaviour; edit here to run experiments and the values are logged to wandb.
+# ---------------------------------------------------------------------------
+class poser_hypers:
+    """Poser (F_P) module hyperparameters."""
+    noise_sigma = 0.04              # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
+    optimizer = "adam"              # paper specifies Adam (matches)
+    jerk_loss_weight = 1e-5         # DEVIATION: paper applies λ=1e-5 smoothness to F_J (Joints) ONLY; repo also applies it to Poser - undocumented extension
+    use_jerk_loss = True            # off switch for the undocumented extension above; True = as-published repo behaviour
+
+
+class joints_hypers:
+    """Joints (F_J) module hyperparameters."""
+    optimizer = "adamw"             # DEVIATION: paper specifies Adam; repo uses AdamW
+    temporal_loss_weight = 1e-5     # paper: λ=1e-5 smoothness penalty for F_J (this is the documented one)
+    use_temporal_loss = True
+
+
+class velocity_hypers:
+    """Velocity (F_V) module hyperparameters."""
+    noise_sigma = 0.025             # DEVIATION: paper specifies σ=0.04 for F_V/F_P/F_C; repo uses 0.025
+    optimizer = "adam"              # paper specifies Adam (matches)
+
+
+class footcontact_hypers:
+    """FootContact (F_C) module hyperparameters."""
+    noise_sigma = 0.04              # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
+    optimizer = "adam"              # paper specifies Adam (matches)
+
+
+class wandb_config:
+    """Weights & Biases logging configuration."""
+    project = "mobileposer"             # TODO: replace with your project name
+    entity = None                       # TODO: replace with your wandb entity (user/team), or leave None for default
+    log_model = "all"                   # "all" logs every checkpoint, True logs best only, False disables artifact logging
+    use_artifacts = False               # if True, combine/eval pull inputs from wandb artifacts (lineage); else read local disk
 
 
 class paths:
