@@ -5,27 +5,29 @@ from enum import Enum, auto
 
 class train_hypers:
     """Hyperparameters for training."""
+
     batch_size = 256
     num_workers = 8
-    num_epochs = 60                 # DEVIATION: paper specifies 80 epochs
+    num_epochs = 80  # DEVIATION: paper specifies 80 epochs. On this branch, corrected
     accelerator = "gpu"
     device = 0
     lr = 1e-3
-    grad_clip_val = None            # DEVIATION: paper specifies gradient norm clipping = 1.0; repo has none (None disables)
-    early_stopping = False          # DEVIATION: EarlyStopping callback imported in train.py but never used
+    grad_clip_val = 1.0  # DEVIATION: paper specifies gradient norm clipping = 1.0; repo has none (None disables) On this branch, corrected
+    early_stopping = False  # DEVIATION: EarlyStopping callback imported in train.py but never used. On this branch, still training for full amount
     early_stopping_patience = 10
 
 
 class finetune_hypers:
     """Hyperparamters for finetuning. NOTE: these finetune values are not disclosed in the paper."""
-    batch_size = 32                 # UNDISCLOSED: down from 256 (train_hypers)
+
+    batch_size = 32  # UNDISCLOSED: down from 256 (train_hypers)
     num_workers = 8
-    num_epochs = 15                 # UNDISCLOSED: down from 60 (train_hypers)
+    num_epochs = 100  # UNDISCLOSED: down from 60 (train_hypers). Up for this branch to allow for early stopping up to 100.
     accelerator = "gpu"
     device = 0
-    lr = 5e-5                       # UNDISCLOSED: down from 1e-3 (train_hypers)
-    grad_clip_val = None            # DEVIATION: same as training - paper specifies clipping = 1.0
-    early_stopping = False          # DEVIATION: same as training - unused
+    lr = 5e-5  # UNDISCLOSED: down from 1e-3 (train_hypers)
+    grad_clip_val = 1.0  # DEVIATION: same as training - paper specifies clipping = 1.0 On this branch, corrected
+    early_stopping = True  # DEVIATION: same as training - unused. Paper does not specify finetuning training, so will use a callback for simplicity
     early_stopping_patience = 10
 
 
@@ -36,67 +38,85 @@ class finetune_hypers:
 # ---------------------------------------------------------------------------
 class poser_hypers:
     """Poser (F_P) module hyperparameters."""
-    noise_sigma = 0.04              # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
-    optimizer = "adam"              # paper specifies Adam (matches)
-    jerk_loss_weight = 1e-5         # DEVIATION: paper applies λ=1e-5 smoothness to F_J (Joints) ONLY; repo also applies it to Poser - undocumented extension
-    use_jerk_loss = True            # off switch for the undocumented extension above; True = as-published repo behaviour
+
+    noise_sigma = 0.04  # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
+    optimizer = "adam"  # paper specifies Adam (matches)
+    jerk_loss_weight = 1e-5  # DEVIATION: paper applies λ=1e-5 smoothness to F_J (Joints) ONLY; repo also applies it to Poser - undocumented extension
+    use_jerk_loss = False  # off switch for the undocumented extension above; True = as-published repo behaviour. Off for this branch.
 
 
 class joints_hypers:
     """Joints (F_J) module hyperparameters."""
-    optimizer = "adamw"             # DEVIATION: paper specifies Adam; repo uses AdamW
-    temporal_loss_weight = 1e-5     # paper: λ=1e-5 smoothness penalty for F_J (this is the documented one)
+
+    optimizer = "adam"  # DEVIATION: paper specifies Adam; repo uses AdamW. Corrected for this branch.
+    temporal_loss_weight = (
+        1e-5  # paper: λ=1e-5 smoothness penalty for F_J (this is the documented one)
+    )
     use_temporal_loss = True
 
 
 class velocity_hypers:
     """Velocity (F_V) module hyperparameters."""
-    noise_sigma = 0.025             # DEVIATION: paper specifies σ=0.04 for F_V/F_P/F_C; repo uses 0.025
-    optimizer = "adam"              # paper specifies Adam (matches)
+
+    noise_sigma = 0.04  # DEVIATION: paper specifies σ=0.04 for F_V/F_P/F_C; repo uses 0.025, Corrected for this branch.
+    optimizer = "adam"  # paper specifies Adam (matches)
 
 
 class footcontact_hypers:
     """FootContact (F_C) module hyperparameters."""
-    noise_sigma = 0.04              # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
-    optimizer = "adam"              # paper specifies Adam (matches)
+
+    noise_sigma = 0.04  # gaussian noise std on target joints; paper specifies 0.04 for F_V/F_P/F_C (matches)
+    optimizer = "adam"  # paper specifies Adam (matches)
 
 
 class wandb_config:
     """Weights & Biases logging configuration."""
-    project = "mobileposer-grk-experiments"             # TODO: replace with your project name
-    entity = None                       # TODO: replace with your wandb entity (user/team), or leave None for default
-    log_model = "all"                   # "all" logs every checkpoint, True logs best only, False disables artifact logging
-    use_artifacts = True               # if True, combine/eval pull inputs from wandb artifacts (lineage); else read local disk
+
+    project = "mobileposer-grk-experiments"  # TODO: replace with your project name
+    entity = None  # TODO: replace with your wandb entity (user/team), or leave None for default
+    log_model = "all"  # "all" logs every checkpoint, True logs best only, False disables artifact logging
+    use_artifacts = True  # if True, combine/eval pull inputs from wandb artifacts (lineage); else read local disk
 
 
 class paths:
     """Relevant paths for MobilePoser. Change as necessary."""
+
     root_dir = Path(__file__).parent.parent
     checkpoint = root_dir / "checkpoints"
     smpl_file = root_dir / "mobileposer/smpl/basicmodel_m.pkl"
     weights_file = root_dir / "checkpoints/weights.pth"
-    raw_amass = Path("/data/raw/AMASS")           # TODO: replace with your path
-    raw_dip = Path("/data/raw/DIP_IMU")           # TODO: replace with your path
-    raw_imuposer = Path("/data/raw/IMUPoser")     # TODO: replace with your path
+    raw_amass = Path("/data/raw/AMASS")  # TODO: replace with your path
+    raw_dip = Path("/data/raw/DIP_IMU")  # TODO: replace with your path
+    raw_imuposer = Path("/data/raw/IMUPoser")  # TODO: replace with your path
     eval_dir = root_dir / "data/mobileposer_processed_datasets/eval"
     processed_datasets = root_dir / "data/mobileposer_processed_datasets"
-    raw_totalcapture_official = root_dir / "data/raw/TotalCapture/raw"  # TODO: replace with your path
-    calibrated_totalcapture = root_dir / "data/raw/TotalCapture/IMU"  # TODO: replace with your path
+    raw_totalcapture_official = (
+        root_dir / "data/raw/TotalCapture/raw"
+    )  # TODO: replace with your path
+    calibrated_totalcapture = (
+        root_dir / "data/raw/TotalCapture/IMU"
+    )  # TODO: replace with your path
     # physics optimiser:
-    physics_model_file = root_dir / 'mobileposer/physics/physics.urdf'
-    plane_file = root_dir / 'mobileposer/physics/plane.urdf' 
-    physics_parameter_file = root_dir /'mobileposer/physics/physics_parameters.json'
+    physics_model_file = root_dir / "mobileposer/physics/physics.urdf"
+    plane_file = root_dir / "mobileposer/physics/plane.urdf"
+    physics_parameter_file = root_dir / "mobileposer/physics/physics_parameters.json"
+
 
 class model_config:
     """MobilePoser Model configurations."""
+
     # device
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     # joint set
-    n_joints = 5                        # (head, right-wrist, left-wrist, right-hip, left-hip)
-    n_imu = 12*n_joints                 # 60 (3 accel. axes + 3x3 orientation rotation matrix) * 5 possible IMU locations
-    n_output_joints = 24                # 24 output joints
-    n_pose_output = n_output_joints*6   # 144 pose output (24 output joints * 6D rotation matrix)
+    n_joints = 5  # (head, right-wrist, left-wrist, right-hip, left-hip)
+    n_imu = (
+        12 * n_joints
+    )  # 60 (3 accel. axes + 3x3 orientation rotation matrix) * 5 possible IMU locations
+    n_output_joints = 24  # 24 output joints
+    n_pose_output = (
+        n_output_joints * 6
+    )  # 144 pose output (24 output joints * 6D rotation matrix)
 
     # model config
     past_frames = 40
@@ -106,26 +126,27 @@ class model_config:
 
 class amass:
     """AMASS dataset information."""
+
     # device-location combinationsa
     combos = {
-        'lw_rp_h': [0, 3, 4],
-        'rw_rp_h': [1, 3, 4],
-        'lw_lp_h': [0, 2, 4],
-        'rw_lp_h': [1, 2, 4],
-        'lw_lp': [0, 2],
-        'lw_rp': [0, 3],
-        'rw_lp': [1, 2],
-        'rw_rp': [1, 3],
-        'lp_h': [2, 4],
-        'rp_h': [3, 4],
-        'lp': [2],
-        'rp': [3],
-     }
+        "lw_rp_h": [0, 3, 4],
+        "rw_rp_h": [1, 3, 4],
+        "lw_lp_h": [0, 2, 4],
+        "rw_lp_h": [1, 2, 4],
+        "lw_lp": [0, 2],
+        "lw_rp": [0, 3],
+        "rw_lp": [1, 2],
+        "rw_rp": [1, 3],
+        "lp_h": [2, 4],
+        "rp_h": [3, 4],
+        "lp": [2],
+        "rp": [3],
+    }
     acc_scale = 30
     vel_scale = 2
 
     # left wrist, right wrist, left thigh, right thigh, head, pelvis
-    all_imu_ids = [0, 1, 2, 3, 4] 
+    all_imu_ids = [0, 1, 2, 3, 4]
     imu_ids = [0, 1, 2, 3]
 
     pred_joints_set = [*range(24)]
@@ -135,6 +156,7 @@ class amass:
 
 class datasets:
     """Dataset information."""
+
     # FPS of data
     fps = 30
 
@@ -152,32 +174,48 @@ class datasets:
 
     # Test datasets
     test_datasets = {
-        'dip': dip_test,
-        'totalcapture': totalcapture,
-        'imuposer': imuposer_test
+        "dip": dip_test,
+        "totalcapture": totalcapture,
+        "imuposer": imuposer_test,
     }
 
     # Finetune datasets
-    finetune_datasets = {
-        'dip': dip_train,
-        'imuposer': imuposer_train
-    }
+    finetune_datasets = {"dip": dip_train, "imuposer": imuposer_train}
 
     # AMASS datasets (add more as they become available in AMASS!)
-    amass_datasets = ['ACCAD', 'BioMotionLab_NTroje', 'BMLhandball', 'BMLmovi', 'CMU', 
-                      'DanceDB', 'DFaust_67', 'EKUT', 'Eyes_Japan_Dataset', 'HUMAN4D',
-                      'HumanEva', 'KIT', 'MPI_HDM05', 'MPI_Limits', 'MPI_mosh', 'SFU',
-                      'SSM_synced', 'TCD_handMocap', 'TotalCapture', 'Transitions_mocap']
+    amass_datasets = [
+        "ACCAD",
+        "BioMotionLab_NTroje",
+        "BMLhandball",
+        "BMLmovi",
+        "CMU",
+        "DanceDB",
+        "DFaust_67",
+        "EKUT",
+        "Eyes_Japan_Dataset",
+        "HUMAN4D",
+        "HumanEva",
+        "KIT",
+        "MPI_HDM05",
+        "MPI_Limits",
+        "MPI_mosh",
+        "SFU",
+        "SSM_synced",
+        "TCD_handMocap",
+        "TotalCapture",
+        "Transitions_mocap",
+    ]
 
     # Root-relative joint positions
     root_relative = False
 
-    # Window length of IMU and Pose data 
+    # Window length of IMU and Pose data
     window_length = 125
 
 
 class joint_set:
     """Joint sets configurations."""
+
     gravity_velocity = -0.018
 
     full = list(range(0, 24))
@@ -192,19 +230,21 @@ class joint_set:
     lower_body_parent = [None, 0, 0, 1, 2, 3, 4, 5, 6]
 
 
-class sensor: 
+class sensor:
     """Sensor parameters."""
+
     device_ids = {
-        'Left_phone': 0,
-        'Left_watch': 1,
-        'Left_headphone': 2,
-        'Right_phone': 3,
-        'Right_watch': 4
+        "Left_phone": 0,
+        "Left_watch": 1,
+        "Left_headphone": 2,
+        "Right_phone": 3,
+        "Right_watch": 4,
     }
 
 
 class Devices(Enum):
     """Device IDs."""
+
     Left_Phone = auto()
     Left_Watch = auto()
     Right_Headphone = auto()
