@@ -61,12 +61,14 @@ if __name__ == "__main__":
             checkpoints[module_name] = load_module_weights(module_name, ckpt_file)
             print(f"Module: {module_name.ljust(15)} | Best Checkpoint: {best_ckpt}")
             # establish lineage from the module training runs, if enabled.
-            # verifies the artifact is byte-identical to the local best checkpoint
-            # we actually load above; raises if they differ.
+            # repo-faithful: link the artifact VERSION matching the exact local
+            # checkpoint the repo's picker selected (best_ckpt), NOT wandb ':best'
+            # (which can differ due to filename loss-rounding ties). Verifies the
+            # linked version is byte-identical to the file we load above.
             if wandb_config.use_artifacts:
                 stage = f"finetune_{args.finetune}" if args.finetune and module_name in ["poser", "joints"] else "train"
                 link_and_verify_artifact(run, f"model-{module_name}-{stage}", ckpt_file,
-                                         aliases=("best", "latest"), file_glob="*.ckpt")
+                                         match_filename=best_ckpt, file_glob="*.ckpt")
         else:
             print(f"No checkpoint found for {module_name} in {module_path}")
 

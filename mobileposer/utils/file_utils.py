@@ -18,28 +18,68 @@ def file_md5(path: str) -> str:
     return h.hexdigest()
 
 
+def _find_version_by_filename(run, artifact_name: str, original_filename: str,
+                              type_name: str = "model"):
+    """Return the artifact version whose metadata['original_filename'] matches
+    `original_filename` (the local checkpoint the repo code selected), or None.
+
+    Lightning rounds the checkpoint loss in the filename, so multiple epochs can
+    print the same loss and wandb's ':best' (full-precision) may point at a
+    different epoch than the repo's filename-based picker. To stay repo-faithful
+    we link the exact version corresponding to the locally-selected file.
+    """
+    import wandb
+    api = wandb.Api()
+    full = f"{run.entity}/{run.project}/{artifact_name}"
+    try:
+        versions = api.artifact_versions(type_name, full)
+    except Exception as e:
+        print(f"Could not list versions of '{artifact_name}' ({e}).")
+        return None
+    for v in versions:
+        if (v.metadata or {}).get("original_filename") == original_filename:
+            return v.version
+    return None
+
+
 def link_and_verify_artifact(run, artifact_name: str, local_path: str,
+                             match_filename: str = None,
                              aliases=("best", "latest"), file_glob="*.ckpt"):
     """Link a wandb artifact for lineage and verify it matches the local file
     the original (non-wandb) code path loads.
 
-    Tries each alias in order (e.g. ':best' then ':latest'). If no artifact is
-    found, falls back to local-only with a warning (no lineage link). If an
-    artifact IS found, raises RuntimeError when its payload is not byte-identical
-    to `local_path` -- this guards against silently combining/evaluating a model
-    different from what the original code would produce.
+    Selection:
+      - If `match_filename` is given (repo-faithful mode), link the artifact
+        VERSION whose original_filename equals it -- i.e. the exact checkpoint the
+        repo's filename-based picker chose, not necessarily wandb ':best'.
+      - Otherwise link by `aliases` in order (e.g. ':best' then ':latest'), for
+        non-repo-faithful use (combined-model eval).
+
+    If no matching artifact is found, falls back to local-only with a warning (no
+    lineage link). If one IS found, raises RuntimeError when its payload is not
+    byte-identical to `local_path` -- guarding against linking a model different
+    from what the code actually loads.
     """
     artifact = None
-    for alias in aliases:
-        try:
-            artifact = run.use_artifact(f"{artifact_name}:{alias}")
-            print(f"Linked artifact {artifact_name}:{alias} for lineage.")
-            break
-        except Exception:
-            continue
-    if artifact is None:
-        print(f"No wandb artifact '{artifact_name}' found; using local file without lineage link.")
-        return
+    if match_filename is not None:
+        version = _find_version_by_filename(run, artifact_name, match_filename)
+        if version is None:
+            print(f"No artifact version of '{artifact_name}' matches local "
+                  f"'{match_filename}'; using local file without lineage link.")
+            return
+        artifact = run.use_artifact(f"{artifact_name}:{version}")
+        print(f"Linked artifact {artifact_name}:{version} ({match_filename}) for lineage.")
+    else:
+        for alias in aliases:
+            try:
+                artifact = run.use_artifact(f"{artifact_name}:{alias}")
+                print(f"Linked artifact {artifact_name}:{alias} for lineage.")
+                break
+            except Exception:
+                continue
+        if artifact is None:
+            print(f"No wandb artifact '{artifact_name}' found; using local file without lineage link.")
+            return
 
     art_dir = artifact.download()
     art_files = list(Path(art_dir).glob(file_glob))

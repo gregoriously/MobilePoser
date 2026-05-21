@@ -55,14 +55,19 @@ class TrainingManager:
         self.hypers = finetune_hypers if finetune else train_hypers
         self.job_type = f"finetune_{finetune}" if finetune else "train"
 
-    def _experiment_group(self, checkpoint_path: Path) -> str:
-        """Experiment id shared by all modules of one pipeline run (e.g. 'exp-3')."""
-        # base training: checkpoints/<N>; finetuning: checkpoints/<N>/finetuned_<dataset>
-        exp_dir = checkpoint_path.parent.parent if self.finetune else checkpoint_path
-        return f"exp-{exp_dir.name}"
+    def _experiment_group(self, module_path: Path) -> str:
+        """Experiment id shared by all modules of one pipeline run (e.g. 'exp-3').
+
+        The <N> is the base checkpoint number, so finetune runs co-locate with the
+        base run that produced them.
+          base:     checkpoints/<N>/<module>                 -> <N> = parent
+          finetune: checkpoints/<N>/finetuned_<ds>/<module>  -> <N> = parent.parent
+        """
+        n = module_path.parent.parent.name if self.finetune else module_path.parent.name
+        return f"exp-{n}"
 
     def _setup_wandb_logger(self, module_path: Path, module_name: str):
-        group = self._experiment_group(module_path.parent)
+        group = self._experiment_group(module_path)
         wandb_logger = WandbLogger(
             project=wandb_config.project,
             entity=wandb_config.entity,
