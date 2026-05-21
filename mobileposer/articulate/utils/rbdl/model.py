@@ -21,7 +21,7 @@ class RBDLModel:
         :param update_kinematics_by_hand: If True, user should call update_kinematics() by hand at proper time.
                                           Set True only if you know what you are doing.
         """
-        model = rbdl.loadModel(model_file.encode())
+        model = rbdl.loadModel(str(model_file).encode())
         model.gravity = gravity
         self.model = model
         self.q_size = model.q_size

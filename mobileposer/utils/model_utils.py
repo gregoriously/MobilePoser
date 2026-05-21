@@ -7,10 +7,10 @@ def load_model(model_path: str):
     """Load MobilePoser model."""
     from mobileposer.models import MobilePoserNet
     device = model_config.device
-    try: 
+    try:
         model = MobilePoserNet().to(device)
         model.load_state_dict(torch.load(model_path, map_location=device))
-    except:
+    except (KeyError, RuntimeError):
         model = MobilePoserNet.load_from_checkpoint(model_path)
     return model
 
