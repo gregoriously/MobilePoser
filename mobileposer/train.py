@@ -18,10 +18,11 @@ import wandb
 from mobileposer.constants import MODULES
 from mobileposer.data import PoseDataModule
 from mobileposer.utils.file_utils import (
-    get_datestring, 
-    make_dir, 
-    get_dir_number, 
-    get_best_checkpoint
+    get_datestring,
+    make_dir,
+    get_dir_number,
+    get_best_checkpoint,
+    link_and_verify_artifact
 )
 from mobileposer.config import (
     paths, train_hypers, finetune_hypers, wandb_config,
@@ -136,15 +137,39 @@ class TrainingManager:
                 )
         return trainer
 
-    def train_module(self, model: L.LightningModule, module_name: str, checkpoint_path: Path):
+    def _parent_artifact_name(self, module_name: str, init_from: Path) -> str:
+        """Name of the training artifact this finetune run is initialized from.
+        Mirrors the checkpoint_name scheme: model-<module>-<parent_stage>."""
+        init_str = str(init_from)
+        if "finetuned_dip" in init_str:
+            parent_stage = "finetune_dip"
+        elif "finetuned_imuposer" in init_str:
+            parent_stage = "finetune_imuposer"
+        else:
+            parent_stage = "train"
+        return f"model-{module_name}-{parent_stage}"
+
+    def train_module(self, model: L.LightningModule, module_name: str, checkpoint_path: Path,
+                     init_from: Path = None, init_ckpt: str = None):
         # set the appropriate hyperparameters
-        model.hypers = self.hypers 
+        model.hypers = self.hypers
 
         # create directory for module
         module_path = checkpoint_path / module_name
         make_dir(module_path)
         datamodule = PoseDataModule(finetune=self.finetune)
         trainer = self._setup_trainer(module_path, module_name)
+
+        # link lineage from the checkpoint this finetune was initialized from.
+        # repo-faithful: match the exact version of the local init checkpoint
+        # (init_ckpt) that from_pretrained loaded; verifies byte-identity.
+        if self.finetune and wandb_config.use_artifacts and init_from is not None and init_ckpt is not None:
+            link_and_verify_artifact(
+                trainer.logger.experiment,
+                self._parent_artifact_name(module_name, init_from),
+                os.path.join(str(init_from), init_ckpt),
+                match_filename=init_ckpt, file_glob="*.ckpt"
+            )
 
         print()
         print("-" * 50)
@@ -206,11 +231,14 @@ if __name__ == "__main__":
         module = MODULES[args.module]
         model = module() # init model from scratch
 
-        if args.finetune: 
+        model_path = None
+        if args.finetune:
             model_path = get_best_checkpoint(model_dir)
             model = module.from_pretrained(model_path=os.path.join(model_dir, model_path)) # load pre-trained model
 
-        training_manager.train_module(model, args.module, checkpoint_path)
+        training_manager.train_module(model, args.module, checkpoint_path,
+                                      init_from=model_dir if args.finetune else None,
+                                      init_ckpt=model_path)
     else:
         # train all modules
         for module_name, module in MODULES.items():

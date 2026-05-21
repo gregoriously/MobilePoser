@@ -137,10 +137,16 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='dip')
     args = parser.parse_args()
 
+    # derive the experiment group from the model path (checkpoints/<N>/<model>.pth)
+    # so eval co-locates with its pipeline's exp-<N>; None if not a numbered dir.
+    parent = Path(args.model).resolve().parent.name
+    group = f"exp-{parent}" if parent.isdigit() else None
+
     # start a wandb run for evaluation
     run = wandb.init(
         project=wandb_config.project,
         entity=wandb_config.entity,
+        group=group,
         job_type="eval",
         name=f"eval-{Path(args.model).stem}-{args.dataset}",
         tags=["eval", args.dataset],
