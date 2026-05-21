@@ -155,18 +155,20 @@ class MobilePoserNet(L.LightningModule):
 
         # Use a Physics Optimizer
         if getenv("PHYSICS"):
-            pose = pose.view(-1, 24, 3, 3)
+            # the PIP optimizer (RBDL + QP solver) runs on CPU/numpy, so move inputs off the GPU
+            pose = pose.view(-1, 24, 3, 3).cpu()
             acc = torch.zeros((pose.shape[0], 5, 3))
 
             # compute joint velocities
-            joint_velocity = vel.view(-1, 24, 3) * amass.vel_scale
+            joint_velocity = (vel.view(-1, 24, 3) * amass.vel_scale).cpu()
+            contact_cpu = contact.cpu()
 
             pose_opt, tran_opt = [], []
-            for p, c, v, a in tqdm(zip(pose, contact, joint_velocity, acc), total=len(pose)):
+            for p, c, v, a in tqdm(zip(pose, contact_cpu, joint_velocity, acc), total=len(pose)):
                 p, t = self.dynamics_optimizer.optimize_frame(p, v, c, a)
                 pose_opt.append(p)
                 tran_opt.append(t)
-            pose, _ = torch.stack(pose_opt), torch.stack(tran_opt).unsqueeze(0)
+            pose = torch.stack(pose_opt).to(self.C.device)
 
         return pose, pred_joints, tran, contact
 
@@ -209,11 +211,17 @@ class MobilePoserNet(L.LightningModule):
 
         # physics module
         if getenv("PHYSICS"):
-            joint_velocity = vel.view(-1, 24, 3) 
+            # the PIP optimizer (RBDL + QP solver) runs on CPU/numpy, so move inputs off the GPU
+            joint_velocity = vel.view(-1, 24, 3)
 
             # optimize pose
-            pose, _ = self.dynamics_optimizer.optimize_frame(pose, joint_velocity[self.num_past_frames]*amass.vel_scale, contact, imu)
-            pose = pose.view(24, 3, 3)
+            pose, _ = self.dynamics_optimizer.optimize_frame(
+                pose.cpu(),
+                (joint_velocity[self.num_past_frames] * amass.vel_scale).cpu(),
+                contact.cpu(),
+                imu.cpu(),
+            )
+            pose = pose.view(24, 3, 3).to(self.C.device)
             return pose, pred_joints.squeeze(0), self.last_root_pos.clone(), contact
 
         return pose, pred_joints.squeeze(0), self.last_root_pos.clone(), contact
