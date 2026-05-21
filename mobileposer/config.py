@@ -82,6 +82,10 @@ class paths:
     processed_datasets = root_dir / "data/mobileposer_processed_datasets"
     raw_totalcapture_official = root_dir / "data/raw/TotalCapture/raw"  # TODO: replace with your path
     calibrated_totalcapture = root_dir / "data/raw/TotalCapture/IMU"  # TODO: replace with your path
+    # physics optimiser:
+    physics_model_file = root_dir / 'mobileposer/physics/physics.urdf'
+    plane_file = root_dir / 'mobileposer/physics/plane.urdf' 
+    physics_parameter_file = root_dir /'mobileposer/physics/physics_parameters.json'
 
 class model_config:
     """MobilePoser Model configurations."""
