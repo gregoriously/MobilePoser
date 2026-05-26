@@ -8,12 +8,13 @@ class train_hypers:
 
     batch_size = 256
     num_workers = 8
-    num_epochs = 80  # DEVIATION: paper specifies 80 epochs. On this branch, corrected
+    #num_epochs = 80  # DEVIATION: paper specifies 80 epochs. On this branch, corrected
+    #no min epochs, early stop only
     accelerator = "gpu"
     device = 0
     lr = 1e-3
     grad_clip_val = 1.0  # DEVIATION: paper specifies gradient norm clipping = 1.0; repo has none (None disables) On this branch, corrected
-    early_stopping = False  # DEVIATION: EarlyStopping callback imported in train.py but never used. On this branch, still training for full amount
+    early_stopping = True  # DEVIATION: EarlyStopping callback imported in train.py but never used. On this branch, still training for full amount
     early_stopping_patience = 10
 
 
@@ -22,7 +23,8 @@ class finetune_hypers:
 
     batch_size = 32  # UNDISCLOSED: down from 256 (train_hypers)
     num_workers = 8
-    num_epochs = 100  # UNDISCLOSED: down from 60 (train_hypers). Up for this branch to allow for early stopping up to 100.
+    #num_epochs = 100  # UNDISCLOSED: down from 60 (train_hypers). Up for this branch to allow for early stopping up to 100.
+    #no min epochs, early stop only
     accelerator = "gpu"
     device = 0
     lr = 5e-5  # UNDISCLOSED: down from 1e-3 (train_hypers)
