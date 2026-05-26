@@ -67,7 +67,7 @@ def process_amass():
             print(f"frame rate actual {framerate}")
             if framerate not in [120, 60, 59]:
                 Bad_fps = True
-                print("frame rate not in 120 60 59)
+                print("frame rate not in 120 60 59")
                 continue
             if Bad_fps:
                 continue
