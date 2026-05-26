@@ -143,8 +143,8 @@ class TrainingManager:
         if self.finetune is None:
             trainer = L.Trainer(
                 fast_dev_run=self.fast_dev_run,
-                min_epochs=self.hypers.num_epochs,
-                max_epochs=self.hypers.num_epochs,
+                #min_epochs=self.hypers.num_epochs,
+                #max_epochs=self.hypers.num_epochs,
                 devices=[self.hypers.device],
                 accelerator=self.hypers.accelerator,
                 gradient_clip_val=self.hypers.grad_clip_val,
@@ -156,7 +156,7 @@ class TrainingManager:
             trainer = L.Trainer(
                 fast_dev_run=self.fast_dev_run,
                 #min_epochs=self.hypers.num_epochs,
-                max_epochs=self.hypers.num_epochs,
+                #max_epochs=self.hypers.num_epochs,
                 devices=[self.hypers.device],
                 accelerator=self.hypers.accelerator,
                 gradient_clip_val=self.hypers.grad_clip_val,
