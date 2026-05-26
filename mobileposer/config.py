@@ -8,8 +8,8 @@ class train_hypers:
 
     batch_size = 256
     num_workers = 8
-    #num_epochs = 80  # DEVIATION: paper specifies 80 epochs. On this branch, corrected
-    #no min epochs, early stop only
+    num_epochs = 80  # DEVIATION: paper specifies 80 epochs. On this branch, corrected
+    #no min epochs, early stop only. Not used in later scripts
     accelerator = "gpu"
     device = 0
     lr = 1e-3
@@ -23,8 +23,8 @@ class finetune_hypers:
 
     batch_size = 32  # UNDISCLOSED: down from 256 (train_hypers)
     num_workers = 8
-    #num_epochs = 100  # UNDISCLOSED: down from 60 (train_hypers). Up for this branch to allow for early stopping up to 100.
-    #no min epochs, early stop only
+    num_epochs = 100  # UNDISCLOSED: down from 60 (train_hypers). Up for this branch to allow for early stopping up to 100.
+    #no min epochs, early stop only. Not used in later scripts
     accelerator = "gpu"
     device = 0
     lr = 5e-5  # UNDISCLOSED: down from 1e-3 (train_hypers)
