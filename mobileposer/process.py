@@ -61,10 +61,13 @@ def process_amass():
 
         for npz_fname in tqdm(sorted(glob.glob(os.path.join(paths.raw_amass, ds_name, "*/*_poses.npz")))):
             try: cdata = np.load(npz_fname)
-            except: continue
+            except: 
+                print("failed np.load")
+                continue
 
             framerate = int(cdata['mocap_framerate'])
             if framerate not in [120, 60, 59]:
+                print("frame rate not in 120 60 59")
                 continue
 
             # enable downsampling
